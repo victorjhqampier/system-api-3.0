@@ -14,10 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\ExampleBasic\" />
-    <Folder Include="Controllers\ExampleBian\" />
     <Folder Include="Handlers\" />
-    <Folder Include="Helpers\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Application\Application.csproj" />
+    <ProjectReference Include="..\EventListener\EventListener.csproj" />
   </ItemGroup>
 
 </Project>

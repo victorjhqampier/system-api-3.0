@@ -8,10 +8,10 @@
 
   <ItemGroup>
     <Folder Include="Internals\Helpers\" />
-    <Folder Include="Internals\Adapters\" />
-    <Folder Include="Adapters\" />
-    <Folder Include="Usecases\" />
-    <Folder Include="Ports\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
   </ItemGroup>
 
   <ItemGroup>

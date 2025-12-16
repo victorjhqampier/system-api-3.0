@@ -1,40 +1,128 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.Diagnostics;
 
 namespace SystemAPI.Controllers.Healthcheck;
 
-[Route("api/[controller]")]
+[Route("/")]
 [ApiController]
 public class HealthcheckController : ControllerBase
 {
-    // GET: api/<HealthcheckController>
+    private readonly HealthCheckService _healthCheckService;
+
+    public HealthcheckController(HealthCheckService healthCheckService)
+    {
+        _healthCheckService = healthCheckService;
+    }
+
+    //[Authorize(Policy = "ReadScope")] // validate by JWT claim
+    //[ArixAuthorize("WriteSetProf")] //Validate Scope by axscope HEADER
     [HttpGet]
-    public IEnumerable<string> Get()
+    public IActionResult GetInfo()
     {
-        return new string[] { "value1", "value2" };
+        return Ok(new { info = "Template for System Layer API", status = "Service Running ..." });
     }
 
-    // GET api/<HealthcheckController>/5
-    [HttpGet("{id}")]
-    public string Get(int id)
+    [HttpGet("health")]
+    public IActionResult Health()
     {
-        return "value";
+        var healthData = new
+        {
+            status = "Healthy",
+            timestamp = DateTime.UtcNow,
+            uptime = Process.GetCurrentProcess().StartTime,
+            version = GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0",
+            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development"
+        };
+
+        return Ok(healthData);
     }
 
-    // POST api/<HealthcheckController>
-    [HttpPost]
-    public void Post([FromBody] string value)
+    //[Authorize(Policy = "ReadScope")] // validate by JWT claim
+    [HttpGet("health/detailed")]
+    public async Task<IActionResult> HealthDetailed()
     {
+        var healthReport = await _healthCheckService.CheckHealthAsync();
+
+        var healthData = new
+        {
+            status = healthReport.Status.ToString(),
+            timestamp = DateTime.UtcNow,
+            uptime = Process.GetCurrentProcess().StartTime,
+            version = GetType().Assembly.GetName().Version?.ToString() ?? "1.0.0",
+            environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Development",
+            checks = healthReport.Entries.Select(entry => new
+            {
+                name = entry.Key,
+                status = entry.Value.Status.ToString(),
+                description = entry.Value.Description,
+                duration = entry.Value.Duration.TotalMilliseconds
+            }).ToList()
+        };
+
+        return Ok(healthData);
     }
 
-    // PUT api/<HealthcheckController>/5
-    [HttpPut("{id}")]
-    public void Put(int id, [FromBody] string value)
+    [HttpGet("ping")]
+    public IActionResult Ping()
     {
+        return Ok(new { message = "pong", timestamp = DateTime.UtcNow });
     }
 
-    // DELETE api/<HealthcheckController>/5
-    [HttpDelete("{id}")]
-    public void Delete(int id)
+    //[Authorize] // Solo requiere autenticación, no scope específico
+    [HttpGet("debug-claims")]
+    public IActionResult DebugClaims()
     {
+        var claims = User.Claims.Select(c => new {
+            Type = c.Type,
+            Value = c.Value
+        }).ToList();
+
+        var scopeClaim = User.FindFirst("scope")?.Value;
+        var scopes = scopeClaim?.Split(' ', StringSplitOptions.RemoveEmptyEntries) ?? new string[0];
+
+        return Ok(new
+        {
+            message = "JWT Claims Debug",
+            isAuthenticated = User.Identity.IsAuthenticated,
+            claims = claims,
+            scopeClaim = scopeClaim,
+            scopesArray = scopes,
+            hasReadScope = scopes.Contains("api/r:correspd"),
+            requiredScope = "api/r:correspd"
+        });
+    }
+
+    [HttpGet("health/ready")]
+    public async Task<IActionResult> HealthReady()
+    {
+        var healthReport = await _healthCheckService.CheckHealthAsync(reg => reg.Tags.Contains("ready"));
+
+        if (healthReport.Status == HealthStatus.Healthy)
+        {
+            return Ok(new { status = "Ready", timestamp = DateTime.UtcNow });
+        }
+
+        return StatusCode(503, new { status = "Not Ready", timestamp = DateTime.UtcNow });
+    }
+
+    [HttpGet("health/live")]
+    public async Task<IActionResult> HealthLive()
+    {
+        var healthReport = await _healthCheckService.CheckHealthAsync(reg => reg.Tags.Contains("live"));
+
+        if (healthReport.Status == HealthStatus.Healthy)
+        {
+            return Ok(new { status = "Alive", timestamp = DateTime.UtcNow });
+        }
+
+        return StatusCode(503, new { status = "Not Alive", timestamp = DateTime.UtcNow });
+    }
+
+    [HttpGet("healthcheck")]
+    public IActionResult HealthCheck()
+    {
+        return Health();
     }
 }
