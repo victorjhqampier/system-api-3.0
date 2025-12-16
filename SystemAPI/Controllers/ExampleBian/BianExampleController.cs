@@ -1,10 +1,8 @@
 ﻿using Application.Internals.Adapters;
 using Application.Ports;
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using SystemAPI.Helpers;
-using SystemAPI.Models;
 
 namespace SystemAPI.Controllers.ExampleBian;
 
@@ -40,8 +38,8 @@ public class BianExampleController : ControllerBase
 
             if (!result.IsSuccess)
             {
-                _logger.LogWarning("TraceId=[{Headers}] Validation=[{ValidationErrors}]", LoggerMapperHelper.ToString(headers), LoggerMapperHelper.ToString(result.ValidationValues.FirstOrDefault()!));
-                return StatusCode(result.Status, EasyResponseBianHelper.EasyWarningRespond<BianExampleResponseModel>(result.ValidationValues));
+                _logger.LogWarning("TraceId=[{Headers}] Validation=[{ValidationErrors}]", LoggerMapperHelper.ToString(headers), LoggerMapperHelper.ToString(result.ValidationValues.FirstOrDefault()!));                
+                return StatusCode(result.Status, EasyBianResponseHelper.WarningResponse(result.ValidationValues));                
             }
 
             if (result.Status == 204)
@@ -50,14 +48,14 @@ public class BianExampleController : ControllerBase
                 return NoContent();
             }
 
-            return Ok(EasyResponseBianHelper.EasySuccessRespond<BianExampleResponseModel>(result.SuccessValue!));
+            return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!, ResponseFieldHelper.Account));
         }
         catch (Exception ex)
         {
             var tracer = Regex.Replace(ex.StackTrace ?? "", @"\sat\s(.*?)\sin\s", string.Empty).Trim();
             _logger.LogError("Message=[{Message}] TraceId=[{Headers}] StackTrace={Trace}", ex.Message, LoggerMapperHelper.ToString(headers), tracer);
 
-            return StatusCode(500, EasyResponseBianHelper.EasyErrorRespond());
+            return StatusCode(500, EasyBianResponseHelper.ErrorResponse(ResponseFieldHelper.Account));            
         }
     }
 }

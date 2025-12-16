@@ -1,7 +1,7 @@
 using Application;
 
 /* ********************************************************************************************************          
-# * Copyright © 2025 Arify Labs - All rights reserved.   
+# * Copyright ï¿½ 2025 Arify Labs - All rights reserved.   
 # * 
 # * Info                  : System API Template.
 # *
