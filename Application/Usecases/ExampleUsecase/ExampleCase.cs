@@ -1,24 +1,26 @@
 ﻿using Application.Adapters;
-using Application.Executors;
 using Application.Internals.Adapters;
+using Application.Internals.Executors;
 using Application.Ports;
 
 namespace Application.Usecases.ExampleUsecase;
 
 public class ExampleCase : IExamplePort
 {
-    async public Task<(RetrieveExampleAdapter?, ValidationResponseAdapter?)> ShowExampleAsync(TraceIdentifierAdapter header)
+    async public Task<EasyResult<RetrieveExampleAdapter>> ShowExampleAsync(TraceIdentifierAdapter header)
     {
-        var validResult = FluentValidExecutor.Execute(header, new HeaderRequestAdapterValidator());
-        if (validResult.Validations.Any())
-        {
-            return (null, validResult);
+        var arrValided = FluentValidationExecutor.Execute(header, new HeaderRequestAdapterValidator());
+        if (arrValided.Any())
+        {            
+            return EasyResult<RetrieveExampleAdapter>.Failure(422, arrValided);
         }
 
-        return (new RetrieveExampleAdapter
+        var result = new RetrieveExampleAdapter
         {
             Ping = "pong",
             Pong = "ping"
-        }, null);
+        };
+
+        return EasyResult<RetrieveExampleAdapter>.Success(result);
     }
 }

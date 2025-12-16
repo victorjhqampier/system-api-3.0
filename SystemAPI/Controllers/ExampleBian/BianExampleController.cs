@@ -36,21 +36,21 @@ public class BianExampleController : ControllerBase
 
         try
         {
-            var (success, fail) = await _exampleUsecase.ShowExampleAsync(headers);
+            var result = await _exampleUsecase.ShowExampleAsync(headers);
 
-            if (fail is not null)
+            if (!result.IsSuccess)
             {
-                _logger.LogWarning("TraceId=[{Headers}] Validation=[{ValidationErrors}]", LoggerMapperHelper.ToString(headers), LoggerMapperHelper.ToString(fail.Validations.FirstOrDefault()!));
-                return StatusCode(fail.StatusGroup, EasyResponseBianHelper.EasyWarningRespond<BianExampleResponseModel>(fail.Validations));
+                _logger.LogWarning("TraceId=[{Headers}] Validation=[{ValidationErrors}]", LoggerMapperHelper.ToString(headers), LoggerMapperHelper.ToString(result.ValidationValues.FirstOrDefault()!));
+                return StatusCode(result.Status, EasyResponseBianHelper.EasyWarningRespond<BianExampleResponseModel>(result.ValidationValues));
             }
 
-            if (success is null)
+            if (result.Status == 204)
             {
                 _logger.LogWarning("TraceId=[{Headers}]", LoggerMapperHelper.ToString(headers));
                 return NoContent();
             }
 
-            return Ok(EasyResponseBianHelper.EasySuccessRespond<BianExampleResponseModel>(success));
+            return Ok(EasyResponseBianHelper.EasySuccessRespond<BianExampleResponseModel>(result.SuccessValue!));
         }
         catch (Exception ex)
         {

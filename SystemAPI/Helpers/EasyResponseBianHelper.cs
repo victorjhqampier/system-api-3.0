@@ -6,11 +6,11 @@ namespace SystemAPI.Helpers;
 
 internal static class EasyResponseBianHelper
 {
-    public static T EasyWarningRespond<T>(IReadOnlyCollection<ValidationError> arrError, int statusCode = 400) where T : BianResponseModel, new()
+    public static T EasyWarningRespond<T>(IReadOnlyCollection<ValidationResultAdapter> validationValues) where T : BianResponseModel, new()
     {
         return new T()
         {
-            errors =  arrError.Select(e => new BianErrorInternalModel
+            errors = validationValues.Select(e => new BianErrorInternalModel
                 {
                     Status_code = e.Code,
                     Message = e.Message
