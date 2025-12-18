@@ -48,7 +48,7 @@ public class BianExampleController : ControllerBase
                 return NoContent();
             }
 
-            return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!, ResponseFieldHelper.Account));
+            return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!));
         }
         catch (Exception ex)
         {
