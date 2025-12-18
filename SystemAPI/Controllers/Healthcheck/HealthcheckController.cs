@@ -85,7 +85,7 @@ public class HealthcheckController : ControllerBase
         return Ok(new
         {
             message = "JWT Claims Debug",
-            isAuthenticated = User.Identity.IsAuthenticated,
+            isAuthenticated = User.Identity?.IsAuthenticated ?? false,
             claims = claims,
             scopeClaim = scopeClaim,
             scopesArray = scopes,

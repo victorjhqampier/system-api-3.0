@@ -1,5 +1,6 @@
 # AggregationPipelineQueryBuilder
 
+in MacOS or Linux dotnet run --project SystemAPI/SystemAPI.csproj
 ## Descripción
 
 `AggregationPipelineQueryBuilder` es una clase utilitaria que facilita la construcción de pipelines de agregación de MongoDB de manera fluida y legible. Esta clase implementa el patrón Builder para crear consultas de agregación complejas de forma más intuitiva que escribir documentos BSON directamente.

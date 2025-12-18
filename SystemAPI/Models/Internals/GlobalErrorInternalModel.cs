@@ -2,6 +2,6 @@
 
 public class GlobalErrorInternalModel
 {
-    public string Code { set; get; }
-    public string Message { set; get; }
+    public required string Code { set; get; }
+    public required string Message { set; get; }
 }

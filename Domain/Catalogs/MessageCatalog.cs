@@ -23,8 +23,7 @@ public static class MessageCatalog
 
     public static string GetErrorByCode(int nCode, string cName = "elemento")
     {
-        string result = string.Empty;
-        if (codigoErrores.TryGetValue(nCode, out result))
+        if (codigoErrores.TryGetValue(nCode, out string? result))
             return result.Replace("##", cName);
         return "Error desconocido en ##".Replace("##", cName);
     }
