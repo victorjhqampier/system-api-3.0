@@ -3,6 +3,18 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using SystemAPI.Models.Internals;
 
+/* ********************************************************************************************************          
+# * Copyright � 2026 Arify Labs - All rights reserved.   
+# * 
+# * Info                  : Easy BIAN Response Helper.
+# *
+# * By                    : Victor Jhampier Caxi Maquera
+# * Email/Mobile/Phone    : victorjhampier@gmail.com | 968991714
+# *
+# * Creation date         : 01/01/2026
+# * 
+# **********************************************************************************************************/
+
 namespace SystemAPI.Helpers;
 
 public static class EasyBianResponseHelper

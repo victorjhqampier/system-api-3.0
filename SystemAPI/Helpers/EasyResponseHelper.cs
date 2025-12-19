@@ -1,58 +1,80 @@
-﻿using SystemAPI.Models.Internals;
+﻿using System.Collections.Concurrent;
+using System.Reflection;
+using Application.Internals.Adapters;
+using SystemAPI.Models.Internals;
+
+/* ********************************************************************************************************          
+# * Copyright � 2026 Arify Labs - All rights reserved.   
+# * 
+# * Info                  : Easy Response Helper.
+# *
+# * By                    : Victor Jhampier Caxi Maquera
+# * Email/Mobile/Phone    : victorjhampier@gmail.com | 968991714
+# *
+# * Creation date         : 01/01/2026
+# * 
+# **********************************************************************************************************/
 
 namespace SystemAPI.Helpers;
 
 internal static class EasyResponseHelper
 {
-    public static ResponseInternalModel EasyInternalErrorRespond(string errorCode, string message = "Error general interno")
+    // Cache para propiedades de tipos para evitar reflexión repetida
+    private static readonly ConcurrentDictionary<Type, PropertyInfo?> _propertyCache = new();
+
+    public static ResponseInternalModel ErrorResponse(string errorCode, string message = "Error general interno")
     {
-        return new ResponseInternalModel()
+        return new ResponseInternalModel
         {
-            StatusCode = 500,
-            Errors = new List<FieldErrorInternalModel>()
+            Errors = [new FieldErrorInternalModel
             {
-                new FieldErrorInternalModel
-                {
-                    StatusCode = errorCode,
-                    Message = message
-                }
-            }
+                StatusCode = errorCode,
+                Message = message
+            }]
         };
     }
-    public static ResponseInternalModel EasyListErrorRespond(List<FieldErrorInternalModel> errorList, int nStatusCode = 400)
+
+    public static ResponseInternalModel WarningResponse(IReadOnlyCollection<ValidationResultAdapter> errorList)
     {
-        return new ResponseInternalModel()
+        // Pre-allocar la capacidad de la lista si conocemos el tamaño
+        var errors = new List<FieldErrorInternalModel>(errorList.Count);
+        
+        foreach (var error in errorList)
         {
-            StatusCode = nStatusCode,
-            Errors = errorList
+            errors.Add(new FieldErrorInternalModel
+            {
+                StatusCode = error.Code,
+                Message = error.Message,
+                Field = error.Field
+            });
+        }
+
+        return new ResponseInternalModel
+        {
+            Errors = errors
         };
     }
-    public static ResponseInternalModel EasyEmptyRespond(int statusCode = 204)
+
+    public static ResponseInternalModel SuccessResponse<T>(T dataResponse)
     {
-        return new ResponseInternalModel()
+        return new ResponseInternalModel
         {
-            StatusCode = statusCode
-        };
-    }
-    public static ResponseInternalModel EasySuccessRespond(dynamic dataResponse)
-    {
-        return new ResponseInternalModel()
-        {
-            StatusCode = 200,
             Response = dataResponse
         };
     }
 
-    public static T EasySuccessRespond<T>(dynamic dataResponse) where T : ResponseInternalModel, new()
+    public static TResponse SuccessResponse<TResponse>(object dataResponse) where TResponse : ResponseInternalModel, new()
     {
-        var result = new T();
-        result.StatusCode = 200;
+        var result = new TResponse();
 
-        var newProp = typeof(T).GetProperties()
-            .Where(prop => prop.Name != "statusCode" && prop.Name != "errors")
-            .FirstOrDefault();
+        // Usar cache para evitar reflexión repetida
+        var property = _propertyCache.GetOrAdd(typeof(TResponse), type =>
+            type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .FirstOrDefault(prop => 
+                    !string.Equals(prop.Name, "statusCode", StringComparison.OrdinalIgnoreCase) && 
+                    !string.Equals(prop.Name, "errors", StringComparison.OrdinalIgnoreCase)));
 
-        if (newProp != null) newProp.SetValue(result, dataResponse);
+        property?.SetValue(result, dataResponse);
 
         return result;
     }
