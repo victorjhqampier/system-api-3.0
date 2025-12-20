@@ -58,4 +58,44 @@ public class BianExampleController : ControllerBase
             return StatusCode(500, EasyBianResponseHelper.ErrorResponse(ResponseFieldHelper.Account));            
         }
     }
+
+    [HttpGet("execute")]
+    public async Task<IActionResult> Execute(
+        [FromHeader(Name = "x-device-identifier")] string? deviceIdentifier,
+        [FromHeader(Name = "x-message-identifier")] string? messageIdentifier,
+        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier
+    ){
+        var headers = new TraceIdentifierAdapter
+        {
+            ChannelIdentifier = channelIdentifier,
+            DeviceIdentifier = deviceIdentifier,
+            MessageIdentifier = messageIdentifier
+        };
+
+        try
+        {
+            var result = await _exampleUsecase.ExecuteExampleTwoAsync(headers);
+
+            if (!result.IsSuccess)
+            {
+                _logger.LogWarning("TraceId=[{Headers}] Validation=[{ValidationErrors}]", LoggerMapperHelper.ToString(headers), LoggerMapperHelper.ToString(result.ValidationValues.FirstOrDefault()!));                
+                return StatusCode(result.Status, EasyBianResponseHelper.WarningResponse(result.ValidationValues));                
+            }
+
+            if (result.Status == 204)
+            {
+                _logger.LogWarning("TraceId=[{Headers}]", LoggerMapperHelper.ToString(headers));
+                return NoContent();
+            }
+
+            return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!));
+        }
+        catch (Exception ex)
+        {
+            var tracer = Regex.Replace(ex.StackTrace ?? "", @"\sat\s(.*?)\sin\s", string.Empty).Trim();
+            _logger.LogError("Message=[{Message}] TraceId=[{Headers}] StackTrace={Trace}", ex.Message, LoggerMapperHelper.ToString(headers), tracer);
+
+            return StatusCode(500, EasyBianResponseHelper.ErrorResponse(ResponseFieldHelper.Account));            
+        }
+    }
 }

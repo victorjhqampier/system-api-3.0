@@ -23,4 +23,21 @@ public class ExampleCase : IExamplePort
 
         return EasyResult<RetrieveExampleAdapter>.Success(result);
     }
+
+    async public Task<EasyResult<ExecuteExampleTwoAdapter>> ExecuteExampleTwoAsync(TraceIdentifierAdapter header)
+    {
+        var arrValided = FluentValidationExecutor.Execute(header, new HeaderRequestAdapterValidator());
+        if (arrValided.Any())
+        {            
+            return EasyResult<ExecuteExampleTwoAdapter>.Failure(403, arrValided);
+        }
+
+        var result = new ExecuteExampleTwoAdapter
+        {
+            Ping = "pong",
+            Pong = "ping"
+        };
+
+        return EasyResult<ExecuteExampleTwoAdapter>.Success(result);
+    }
 }
