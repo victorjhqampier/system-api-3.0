@@ -16,140 +16,214 @@ using System.Text.Json;
 # * 
 # **********************************************************************************************************/
 
-namespace InternalHttpClientBuilder;
+namespace InternalHttpClientInfrastructure;
 
 public sealed class HttpClientBuilder
 {
     private readonly IHttpClientFactory _factory;
-    private static ILogger? _logger;
+    private readonly ILogger _logger;
+    private readonly JsonSerializerOptions _jsonOptions;
 
     private string _clientName = "ArifyClient";
-    private string _baseUrl = "";
-    private string _endpoint = "";
+    private string? _baseUrl;
+    private string? _endpoint;
     private readonly Dictionary<string, string> _headers = new();
-    private readonly Dictionary<string, string> _params = new();
     private readonly Dictionary<string, string> _query = new();
+    private TimeSpan? _timeout;
 
     public HttpClientBuilder(IHttpClientFactory factory, ILogger logger)
     {
-        _factory = factory;
-        _logger = logger;
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false
+        };
     }
 
-    public HttpClientBuilder Client(string name)
+    public HttpClientBuilder WithClient(string name)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
         _clientName = name;
         return this;
     }
 
-    public HttpClientBuilder Http(string baseUrl)
+    public HttpClientBuilder WithBaseUrl(string baseUrl)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(baseUrl);
         _baseUrl = baseUrl.TrimEnd('/');
         return this;
     }
 
-    public HttpClientBuilder Endpoint(string endpoint)
+    public HttpClientBuilder WithEndpoint(string endpoint)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(endpoint);
         _endpoint = endpoint.TrimStart('/');
         return this;
     }
 
-    public HttpClientBuilder Header(string key, string value)
+    public HttpClientBuilder WithHeader(string key, string value)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(value);
         _headers[key] = value;
         return this;
     }
 
-    public HttpClientBuilder Authorization(string scheme, string token)
+    public HttpClientBuilder WithBearerToken(string token)
     {
-        _headers["Authorization"] = $"{scheme} {token}";
-        return this;
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        return WithHeader("Authorization", $"Bearer {token}");
     }
 
-    public HttpClientBuilder Param(string key, string value)
+    public HttpClientBuilder WithAuthorization(string scheme, string token)
     {
-        _params[key] = value;
-        return this;
+        ArgumentException.ThrowIfNullOrWhiteSpace(scheme);
+        ArgumentException.ThrowIfNullOrWhiteSpace(token);
+        return WithHeader("Authorization", $"{scheme} {token}");
     }
 
-    public HttpClientBuilder Query(string key, string value)
+    public HttpClientBuilder WithQuery(string key, string value)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentNullException.ThrowIfNull(value);
         _query[key] = value;
+        return this;
+    }
+
+    public HttpClientBuilder WithTimeout(TimeSpan timeout)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(timeout, TimeSpan.Zero);
+        _timeout = timeout;
         return this;
     }
 
     private Uri BuildUri()
     {
-        var path = $"{_baseUrl}/{_endpoint}";
-        var ub = new UriBuilder(path);
+        if (string.IsNullOrWhiteSpace(_baseUrl))
+            throw new InvalidOperationException("Base URL must be set before making requests");
 
-        if (_query.Count > 0)
-        {
-            var qs = string.Join("&", _query.Select(kv =>
-                $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
-            ub.Query = qs;
-        }
+        var path = string.IsNullOrWhiteSpace(_endpoint) 
+            ? _baseUrl 
+            : $"{_baseUrl}/{_endpoint}";
 
-        return ub.Uri;
+        if (_query.Count == 0)
+            return new Uri(path);
+
+        var uriBuilder = new UriBuilder(path);
+        var queryString = string.Join("&", _query.Select(kv =>
+            $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value)}"));
+        uriBuilder.Query = queryString;
+
+        return uriBuilder.Uri;
     }
 
     private HttpRequestMessage BuildRequest(HttpMethod method, object? body = null)
     {
-        var uri = BuildUri();        
+        var uri = BuildUri();
+        var request = new HttpRequestMessage(method, uri);
 
-        var req = new HttpRequestMessage(method, uri);
+        // Add headers
+        foreach (var header in _headers)
+        {
+            if (!request.Headers.TryAddWithoutValidation(header.Key, header.Value))
+            {
+                _logger.LogWarning("Failed to add header {HeaderKey} with value {HeaderValue}", header.Key, header.Value);
+            }
+        }
 
-        foreach (var h in _headers)
-            req.Headers.TryAddWithoutValidation(h.Key, h.Value);
-
+        // Add content if body is provided
         if (body is not null)
         {
-            var json = JsonSerializer.Serialize(body);
-            req.Content = new StringContent(json, Encoding.UTF8, "application/json");
-        }
-        else if (!_headers.ContainsKey("Content-Type"))
-        {
-            // si necesitas forzar content-type solo cuando hay body, hazlo aquí
+            var json = JsonSerializer.Serialize(body, _jsonOptions);
+            request.Content = new StringContent(json, Encoding.UTF8, "application/json");
         }
 
-        return req;
+        return request;
     }
 
-    public async Task<HttpResponseCollection<T>> GetAsync<T>(CancellationToken ct = default)
+    public async Task<HttpResponseResult<T>> GetAsync<T>(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteRequestAsync<T>(HttpMethod.Get, null, cancellationToken);
+    }
+
+    public async Task<HttpResponseResult<T>> PostAsync<T>(object? body = null, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteRequestAsync<T>(HttpMethod.Post, body, cancellationToken);
+    }
+
+    public async Task<HttpResponseResult<T>> PutAsync<T>(object? body = null, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteRequestAsync<T>(HttpMethod.Put, body, cancellationToken);
+    }
+
+    public async Task<HttpResponseResult<T>> DeleteAsync<T>(CancellationToken cancellationToken = default)
+    {
+        return await ExecuteRequestAsync<T>(HttpMethod.Delete, null, cancellationToken);
+    }
+
+    private async Task<HttpResponseResult<T>> ExecuteRequestAsync<T>(HttpMethod method, object? body, CancellationToken cancellationToken)
     {
         var client = _factory.CreateClient(_clientName);
-        using var req = BuildRequest(HttpMethod.Get);
+        
+        if (_timeout.HasValue)
+            client.Timeout = _timeout.Value;
 
-        using var resp = await client.SendAsync(req, ct);
-        return await BuildResponse<T>(resp);
-    }
-
-    public async Task<HttpResponseCollection<T>> PostAsync<T>(object? body, CancellationToken ct = default)
-    {
-        var client = _factory.CreateClient(_clientName);
-        using var req = BuildRequest(HttpMethod.Post, body);
-
-        using var resp = await client.SendAsync(req, ct);
-        return await BuildResponse<T>(resp);
-    }
-
-    private static async Task<HttpResponseCollection<T>> BuildResponse<T>(HttpResponseMessage resp)
-    {
-        T? content = default;
+        using var request = BuildRequest(method, body);
+        
         try
         {
-            content = await resp.Content.ReadFromJsonAsync<T>();
+            _logger.LogDebug("Executing {Method} request to {Uri}", method, request.RequestUri);
+            
+            using var response = await client.SendAsync(request, cancellationToken);
+            return await BuildResponseAsync<T>(response);
         }
-        catch 
+        catch (HttpRequestException ex)
         {
-            _logger.LogError($"Swagger contract violation, Cannot decode Body in {(int)resp.StatusCode} {resp.RequestMessage?.RequestUri?.ToString()}");
+            _logger.LogError("{Message} < HTTP request failed for {Method} {Uri}", ex.Message, method, request.RequestUri);
+            throw;
+        }
+        catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+        {
+            _logger.LogError("{Message} < Request timeout for {Method} {Uri}", ex.Message, method, request.RequestUri);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(" {Message} < Unexpected error during {Method} request to {Uri}", ex.Message, method, request.RequestUri);
+            throw;
+        }
+    }
+
+    private async Task<HttpResponseResult<T>> BuildResponseAsync<T>(HttpResponseMessage response)
+    {
+        T? content = default;
+        var requestUri = response.RequestMessage?.RequestUri?.ToString() ?? string.Empty;
+
+        try
+        {            
+            content = await response.Content.ReadFromJsonAsync<T>(_jsonOptions);      
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError("{Message} < Failed to deserialize response content for {StatusCode} {Uri}. Content may not match expected type {Type} and Body {content}", ex.Message, (int)response.StatusCode, requestUri, typeof(T).Name, content);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("{Message} < Unexpected error while reading response content for {StatusCode} {Uri} {content}", ex.Message, (int)response.StatusCode, requestUri, content);
         }
 
-        return new HttpResponseCollection<T>(
-            (int)resp.StatusCode,
-            content, // is not null,
-            resp.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value)),
-            resp.RequestMessage?.RequestUri?.ToString() ?? ""
+        //var headers = response.Headers
+        //    .Concat(response.Content.Headers)
+        //    .ToDictionary(h => h.Key, h => string.Join(",", h.Value));
+
+        return new HttpResponseResult<T>(
+            (int)response.StatusCode,
+            (int)response.StatusCode == 200 && content is not null,
+            content,
+            //headers,
+            requestUri
         );
     }
 }

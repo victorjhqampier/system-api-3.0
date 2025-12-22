@@ -1,7 +1,9 @@
 ﻿using Domain.Entities;
 using Domain.Interfaces;
 using FakeApiInfrastructure.Collections;
-using InternalHttpClientBuilder;
+using InternalHttpClientInfrastructure;
+
+//using InternalHttpClientBuilder;
 using Microsoft.Extensions.Logging;
 
 namespace FakeApiInfrastructure.Queries;
@@ -19,11 +21,11 @@ public class FakeApiQueryInfra : IExampleTitleQuery
 
     async public Task<ExampleTitleEntity> GetAsync(int value = 1)
     {
-        var response = await _httpClient.Http("https://jsonplaceholder.typicode.com")
-            .Endpoint($"todos/{value}")
+        var response = await _httpClient.WithBaseUrl("https://jsonplaceholder.typicode.com")
+            .WithEndpoint($"todos/{value}")
             .GetAsync<ApiExampleCollection>();
 
-        if (response.StatusCode != 200 || response.Content is null) return new ExampleTitleEntity();
+        if (!response.IsSuccess) return new ExampleTitleEntity();
 
         return new ExampleTitleEntity
         {
@@ -34,11 +36,11 @@ public class FakeApiQueryInfra : IExampleTitleQuery
 
     async public Task<ExampleTitleEntity> GetProductAsync(int value = 1)
     {
-        var response = await _httpClient.Http("https://fakestoreapi.com")
-            .Endpoint($"products/{value}")
+        var response = await _httpClient.WithBaseUrl("https://fakestoreapi.com")
+            .WithEndpoint($"products/{value}")
             .GetAsync<ApiExampleTwoCollection>();
 
-        if (response.StatusCode != 200 || response.Content is null) return new ExampleTitleEntity();
+        if (!response.IsSuccess) return new ExampleTitleEntity();
 
         return new ExampleTitleEntity
         {
