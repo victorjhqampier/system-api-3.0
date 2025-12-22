@@ -1,4 +1,5 @@
 using Application;
+using SystemAPI.Handlers;
 
 /* ********************************************************************************************************          
 # * Copyright � 2025 Arify Labs - All rights reserved.   
@@ -8,7 +9,7 @@ using Application;
 # * By                    : Victor Jhampier Caxi Maquera
 # * Email/Mobile/Phone    : victorjhampier@gmail.com | 968991*14
 # *
-# * Creation date         : 03/08/2025
+# * Creation date         : 01/01/2026
 # * 
 # **********************************************************************************************************/
 
@@ -16,6 +17,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add Health Checks
 builder.Services.AddHealthChecks();
+
+// Add Custom services
+//builder.Services.AddApplicationServices(builder.Configuration, builder.Environment.IsDevelopment());
+//builder.Services.ConfigureJwtKeycloak(builder.Configuration, builder.Environment.IsDevelopment());
+//builder.Services.ConfigureJwtAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
+//builder.Services.ConfigureJwtScopes(builder.Configuration, builder.Environment.IsDevelopment());
+builder.Services.ConfigureArixAuthentication(builder.Configuration);
 
 // Add Application Layer
 builder.Services.AddApplicationServices(builder.Configuration, builder.Environment.IsDevelopment());
@@ -40,6 +48,9 @@ app.Use(async (context, next) =>
     }
 });
 
+// Middleware de auditoría Arify (opcional - descomenta para habilitar logging detallado)
+// app.UseArifyAudit();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -47,6 +58,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Add custom Arify Authentication
+app.UseAuthentication();
 
 app.UseAuthorization();
 

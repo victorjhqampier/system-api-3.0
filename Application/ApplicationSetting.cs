@@ -1,5 +1,7 @@
 ﻿using Application.Ports;
 using Application.Usecases.ExampleUsecase;
+using FakeApiInfrastructure;
+using InternalHttpClientInfrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,6 +25,10 @@ public static class ApplicationSetting
 {
     public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
+        // Added Infrstrutures
+        services.AddInternalHttpClientConnector();
+        services.AddFakeApiInfrastructure();
+
         //Dependency inyection        
         services.AddTransient<IExamplePort, ExampleCase>();
     }

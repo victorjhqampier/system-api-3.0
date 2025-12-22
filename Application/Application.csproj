@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\FakeApiInfrastructure\FakeApiInfrastructure.csproj" />
+    <ProjectReference Include="..\InternalHttpClientInfrastructure\InternalHttpClientInfrastructure.csproj" />
   </ItemGroup>
 
 </Project>
