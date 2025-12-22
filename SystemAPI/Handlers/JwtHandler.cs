@@ -12,8 +12,14 @@ public static class JwtHandler
     public static void ConfigureJwtAuthentication(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
         //https://cognito-idp.us-east-1.amazonaws.com/us-east-1_RyxEjxH9S
-        string authorityUrl = isDevelopment ? configuration["Jwt:Issuer"] : Environment.GetEnvironmentVariable("JWT_ISSUER");
-        string validAudience = isDevelopment ? configuration["Jwt:Audience"] : Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+        string? authorityUrl = isDevelopment ? configuration["Jwt:Issuer"] : Environment.GetEnvironmentVariable("JWT_ISSUER");
+        string? validAudience = isDevelopment ? configuration["Jwt:Audience"] : Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+
+        if (string.IsNullOrEmpty(authorityUrl))
+            throw new InvalidOperationException("JWT Issuer configuration is required");
+
+        if (string.IsNullOrEmpty(validAudience))
+            throw new InvalidOperationException("JWT Audience configuration is required");
 
         services.AddAuthentication(options =>
         {
@@ -32,7 +38,7 @@ public static class JwtHandler
                 ValidAudience = validAudience,
                 IssuerSigningKeyResolver = (token, securityToken, kid, validationParameters) =>
                 {
-                    if (_jwksCache.TryGetValue(options.Authority, out var cachedJwks))
+                    if (!string.IsNullOrEmpty(options.Authority) && _jwksCache.TryGetValue(options.Authority, out var cachedJwks))
                     {
                         return cachedJwks.Keys;
                     }
@@ -41,7 +47,10 @@ public static class JwtHandler
                     var jwksJson = httpClient.GetStringAsync($"{options.Authority}/.well-known/jwks.json").Result;
                     var newJwks = new JsonWebKeySet(jwksJson);
 
-                    _jwksCache[options.Authority] = newJwks;
+                    if (!string.IsNullOrEmpty(options.Authority))
+                    {
+                        _jwksCache[options.Authority] = newJwks;
+                    }
 
                     return newJwks.Keys;
                 }
@@ -53,17 +62,18 @@ public static class JwtHandler
     {
         services.AddAuthorization(options =>
         {
+            var readScope = isDevelopment ? configuration["Jwt:ReadScope"] : Environment.GetEnvironmentVariable("JWT_READ_SCOPE");
+            var updateScope = isDevelopment ? configuration["Jwt:UpdateScope"] : Environment.GetEnvironmentVariable("JWT_UPDATE_SCOPE");
+            var writeScope = isDevelopment ? configuration["Jwt:WriteScope"] : Environment.GetEnvironmentVariable("JWT_WRITE_SCOPE");
+
             options.AddPolicy("ReadScope", policy =>
-                policy.RequireAssertion(context => HasRequiredScope(context,
-                    isDevelopment ? configuration["Jwt:ReadScope"].ToString() : Environment.GetEnvironmentVariable("JWT_READ_SCOPE"))));
+                policy.RequireAssertion(context => HasRequiredScope(context, readScope ?? string.Empty)));
 
             options.AddPolicy("UpdateScope", policy =>
-                policy.RequireAssertion(context => HasRequiredScope(context,
-                    isDevelopment ? configuration["Jwt:UpdateScope"].ToString() : Environment.GetEnvironmentVariable("JWT_UPDATE_SCOPE"))));
+                policy.RequireAssertion(context => HasRequiredScope(context, updateScope ?? string.Empty)));
 
             options.AddPolicy("WriteScope", policy =>
-                policy.RequireAssertion(context => HasRequiredScope(context,
-                    isDevelopment ? configuration["Jwt:WriteScope"].ToString() : Environment.GetEnvironmentVariable("JWT_WRITE_SCOPE"))));
+                policy.RequireAssertion(context => HasRequiredScope(context, writeScope ?? string.Empty)));
         });
     }
 
@@ -81,8 +91,14 @@ public static class JwtHandler
     public static void ConfigureJwtKeycloak(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
         //string authorityUrl = "http://localhost:8080/realms/master";
-        string authorityUrl = isDevelopment ? configuration["Jwt:Issuer"] : Environment.GetEnvironmentVariable("JWT_ISSUER");
-        string validAudience = isDevelopment ? configuration["Jwt:Audience"] : Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+        string? authorityUrl = isDevelopment ? configuration["Jwt:Issuer"] : Environment.GetEnvironmentVariable("JWT_ISSUER");
+        string? validAudience = isDevelopment ? configuration["Jwt:Audience"] : Environment.GetEnvironmentVariable("JWT_AUDIENCE");
+
+        if (string.IsNullOrEmpty(authorityUrl))
+            throw new InvalidOperationException("JWT Issuer configuration is required");
+
+        if (string.IsNullOrEmpty(validAudience))
+            throw new InvalidOperationException("JWT Audience configuration is required");
 
         services.AddAuthentication(options =>
         {

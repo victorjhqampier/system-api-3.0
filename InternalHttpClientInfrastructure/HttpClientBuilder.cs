@@ -200,29 +200,36 @@ public sealed class HttpClientBuilder
     {
         T? content = default;
         var requestUri = response.RequestMessage?.RequestUri?.ToString() ?? string.Empty;
+        bool isSuccess = false;
 
         try
         {            
-            content = await response.Content.ReadFromJsonAsync<T>(_jsonOptions);      
+            if ((int)response.StatusCode == 200)
+            {
+                content = await response.Content.ReadFromJsonAsync<T>(_jsonOptions);
+                isSuccess = content is not null;
+            }            
+            else
+            {
+                var headers = response.Headers
+                .Concat(response.Content.Headers)
+                .ToDictionary(h => h.Key, h => string.Join(",", h.Value));
+                _logger.LogWarning("Response >> {StatusCode} {Uri}\nHeaders={headers} Content={content}", (int)response.StatusCode, requestUri, headers, response.Content.ToString());
+            }   
         }
         catch (JsonException ex)
         {
-            _logger.LogError("{Message} < Failed to deserialize response content for {StatusCode} {Uri}. Content may not match expected type {Type} and Body {content}", ex.Message, (int)response.StatusCode, requestUri, typeof(T).Name, content);
+            _logger.LogError("{Message} >> Failed to deserialize response >> {StatusCode} {Uri} >> Content may not match expected type {Type}\n{content}", ex.Message, (int)response.StatusCode, requestUri, typeof(T).Name, response.Content.ToString());
         }
         catch (Exception ex)
         {
-            _logger.LogError("{Message} < Unexpected error while reading response content for {StatusCode} {Uri} {content}", ex.Message, (int)response.StatusCode, requestUri, content);
-        }
-
-        //var headers = response.Headers
-        //    .Concat(response.Content.Headers)
-        //    .ToDictionary(h => h.Key, h => string.Join(",", h.Value));
+            _logger.LogError("{Message} >> Unexpected error while reading response >> {StatusCode} {Uri}\n{content}", ex.Message, (int)response.StatusCode, requestUri, response.Content.ToString());
+        }        
 
         return new HttpResponseResult<T>(
             (int)response.StatusCode,
-            (int)response.StatusCode == 200 && content is not null,
+            isSuccess,
             content,
-            //headers,
             requestUri
         );
     }
