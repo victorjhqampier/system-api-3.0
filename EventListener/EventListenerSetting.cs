@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using EventListener.FromMemory;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace EventListener
+namespace EventListener;
+
+public static class EventListenerSetting
 {
-    internal class EventListenerSetting
+    public static void AddInMemoryEventListenerServices(this IServiceCollection services)
     {
+        // Hosted Services
+        services.AddHostedService<MicroserviceCallMemoryListener>();
+        services.AddHostedService<MicroserviceErrorMemoryListener>();
     }
 }

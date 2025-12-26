@@ -1,8 +1,9 @@
 using Application;
+using EventListener;
 using SystemAPI.Handlers;
 
 /* ********************************************************************************************************          
-# * Copyright � 2025 Arify Labs - All rights reserved.   
+# * Copyright � 2026 Arify Labs - All rights reserved.   
 # * 
 # * Info                  : System API Template.
 # *
@@ -15,17 +16,17 @@ using SystemAPI.Handlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Health Checks
+// *** Custom *** - Add Health Checks
 builder.Services.AddHealthChecks();
 
-// Add Custom services
+// *** Custom *** - Add Authorizers
 //builder.Services.AddApplicationServices(builder.Configuration, builder.Environment.IsDevelopment());
 //builder.Services.ConfigureJwtKeycloak(builder.Configuration, builder.Environment.IsDevelopment());
 //builder.Services.ConfigureJwtAuthentication(builder.Configuration, builder.Environment.IsDevelopment());
 //builder.Services.ConfigureJwtScopes(builder.Configuration, builder.Environment.IsDevelopment());
 builder.Services.ConfigureArixAuthentication(builder.Configuration);
 
-// Add Application Layer
+// *** Custom *** - Add Application Layer
 builder.Services.AddApplicationServices(builder.Configuration, builder.Environment.IsDevelopment());
 
 // Add services to the container.
@@ -35,6 +36,9 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// *** Custom *** - Add Event Listeners
+builder.Services.AddInMemoryEventListenerServices();
 
 var app = builder.Build();
 
@@ -51,7 +55,7 @@ app.Use(async (context, next) =>
 // Middleware de auditoría Arify (opcional - descomenta para habilitar logging detallado)
 // app.UseArifyAudit();
 
-// Configure the HTTP request pipeline.
+// *** Custom *** - Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -59,7 +63,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Add custom Arify Authentication
+// *** Custom *** - Add custom Arify Authentication
 app.UseAuthentication();
 
 app.UseAuthorization();

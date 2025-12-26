@@ -19,11 +19,11 @@ public class FakeApiQueryInfra : IExampleTitleQuery
         _httpClient = new HttpClientBuilder(factory, logger);
     }
 
-    async public Task<ExampleTitleEntity> GetAsync(int value = 1)
+    async public Task<ExampleTitleEntity> GetAsync(int value = 1, CancellationToken ct = default)
     {
         var response = await _httpClient.WithBaseUrl("https://jsonplaceholder.typicode.com")
             .WithEndpoint($"todos/{value}")
-            .GetAsync<ApiExampleCollection>();
+            .GetAsync<ApiExampleCollection>(ct);
 
         if (!response.IsSuccess) return new ExampleTitleEntity();
 
@@ -34,11 +34,11 @@ public class FakeApiQueryInfra : IExampleTitleQuery
         };
     }
 
-    async public Task<ExampleTitleEntity> GetProductAsync(int value = 1)
+    async public Task<ExampleTitleEntity> GetProductAsync(int value = 1, CancellationToken ct = default)
     {
         var response = await _httpClient.WithBaseUrl("https://fakestoreapi.com")
             .WithEndpoint($"products/{value}")
-            .GetAsync<ApiExampleTwoCollection>();
+            .GetAsync<ApiExampleTwoCollection>(ct);
 
         if (!response.IsSuccess) return new ExampleTitleEntity();
 

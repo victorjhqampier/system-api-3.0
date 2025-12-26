@@ -1,5 +1,6 @@
 ﻿using Application.Ports;
 using Application.Usecases.ExampleUsecase;
+using Domain.Containers.MemoryEvent;
 using FakeApiInfrastructure;
 using InternalHttpClientInfrastructure;
 using Microsoft.Extensions.Configuration;
@@ -25,6 +26,10 @@ public static class ApplicationSetting
 {
     public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration, bool isDevelopment)
     {
+        // Added Queue in Memory for Api Events
+        services.AddSingleton<MicroserviceCallMemoryQueue>(provider => new MicroserviceCallMemoryQueue());
+        services.AddSingleton<MicroserviceErrorMemoryQueue>(provider => new MicroserviceErrorMemoryQueue());
+
         // Added Infrstrutures
         services.AddInternalHttpClientConnector();
         services.AddFakeApiInfrastructure();

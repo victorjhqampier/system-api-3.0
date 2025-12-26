@@ -14,7 +14,7 @@ public class ExampleCase : IExamplePort
         _fakeApiQuery = fakeApiQuery;
     }
 
-    async public Task<EasyResult<RetrieveExampleAdapter>> ShowExampleAsync(TraceIdentifierAdapter header)
+    async public Task<EasyResult<RetrieveExampleAdapter>> ShowExampleAsync(TraceIdentifierAdapter header, CancellationToken ct = default)
     {
         var arrValided = FluentValidationExecutor.Execute(header, new HeaderRequestAdapterValidator());
         if (arrValided.Any())
@@ -23,8 +23,8 @@ public class ExampleCase : IExamplePort
         }
 
         var random = new Random();
-        var taskApiResult = _fakeApiQuery.GetAsync(random.Next(1, 14));
-        var taskApiTwoResult = _fakeApiQuery.GetProductAsync(random.Next(1, 14));
+        var taskApiResult = _fakeApiQuery.GetAsync(random.Next(1, 14), ct);
+        var taskApiTwoResult = _fakeApiQuery.GetProductAsync(random.Next(1, 14), ct);
 
         await Task.WhenAll(taskApiResult, taskApiTwoResult);
         var apiResult = await taskApiResult;
@@ -39,7 +39,7 @@ public class ExampleCase : IExamplePort
         return EasyResult<RetrieveExampleAdapter>.Success(result);
     }
 
-    async public Task<EasyResult<ExecuteExampleTwoAdapter>> ExecuteExampleTwoAsync(TraceIdentifierAdapter header)
+    async public Task<EasyResult<ExecuteExampleTwoAdapter>> ExecuteExampleTwoAsync(TraceIdentifierAdapter header, CancellationToken ct = default)
     {
         var arrValided = FluentValidationExecutor.Execute(header, new HeaderRequestAdapterValidator());
         if (arrValided.Any())

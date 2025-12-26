@@ -3,6 +3,7 @@ using Application.Ports;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.RegularExpressions;
+using System.Threading;
 using SystemAPI.Handlers.ArifyAuthorizer;
 using SystemAPI.Helpers;
 
@@ -25,8 +26,10 @@ public class BianExampleController : ControllerBase
     public async Task<IActionResult> Register(
         [FromHeader(Name = "x-device-identifier")] string? deviceIdentifier,
         [FromHeader(Name = "x-message-identifier")] string? messageIdentifier,
-        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier
-    ){
+        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier,
+        CancellationToken ct = default
+    )
+    {
         var headers = new TraceIdentifierAdapter
         {
             ChannelIdentifier = channelIdentifier,
@@ -36,7 +39,7 @@ public class BianExampleController : ControllerBase
 
         try
         {
-            var result = await _exampleUsecase.ShowExampleAsync(headers);
+            var result = await _exampleUsecase.ShowExampleAsync(headers, ct);
 
             if (!result.IsSuccess)
             {
@@ -52,6 +55,11 @@ public class BianExampleController : ControllerBase
 
             return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!));
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Operation cancelled by client TraceId=[{Headers}]", LoggerMapperHelper.ToString(headers));
+            return StatusCode(499, EasyBianResponseHelper.ErrorResponse("499", "Client Closed Request"));
+        }
         catch (Exception ex)
         {
             var tracer = Regex.Replace(ex.StackTrace ?? "", @"\sat\s(.*?)\sin\s", string.Empty).Trim();
@@ -66,8 +74,10 @@ public class BianExampleController : ControllerBase
     public async Task<IActionResult> ExecuteProtected(
         [FromHeader(Name = "x-device-identifier")] string? deviceIdentifier,
         [FromHeader(Name = "x-message-identifier")] string? messageIdentifier,
-        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier
-    ){
+        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier,
+        CancellationToken ct = default
+    )
+    {
         var headers = new TraceIdentifierAdapter
         {
             ChannelIdentifier = channelIdentifier,
@@ -93,6 +103,11 @@ public class BianExampleController : ControllerBase
 
             return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!));
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Operation cancelled by client TraceId=[{Headers}]", LoggerMapperHelper.ToString(headers));
+            return StatusCode(499, EasyBianResponseHelper.ErrorResponse("499", "Client Closed Request"));
+        }
         catch (Exception ex)
         {
             var tracer = Regex.Replace(ex.StackTrace ?? "", @"\sat\s(.*?)\sin\s", string.Empty).Trim();
@@ -108,7 +123,8 @@ public class BianExampleController : ControllerBase
        [FromHeader(Name = "x-device-identifier")] string? deviceIdentifier,
        [FromHeader(Name = "x-message-identifier")] string? messageIdentifier,
        [FromHeader(Name = "x-channel-identifier")] string? channelIdentifier,
-       [FromHeader(Name = "x-scope")] string? scope
+       [FromHeader(Name = "x-scope")] string? scope,
+       CancellationToken ct = default
    )
     {
         var headers = new TraceIdentifierAdapter
@@ -135,6 +151,11 @@ public class BianExampleController : ControllerBase
             }
 
             return Ok(EasyBianResponseHelper.SuccessResponse(result.SuccessValue!));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("Operation cancelled by client TraceId=[{Headers}]", LoggerMapperHelper.ToString(headers));
+            return StatusCode(499);
         }
         catch (Exception ex)
         {
