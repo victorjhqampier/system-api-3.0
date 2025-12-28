@@ -1,4 +1,5 @@
-﻿using InternalHttpClientInfrastructure.Collections;
+﻿using Domain.Containers.MemoryEvent;
+using InternalHttpClientInfrastructure.Collections;
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text;
@@ -30,6 +31,7 @@ public sealed class HttpClientBuilder
     private readonly Dictionary<string, string> _headers = new();
     private readonly Dictionary<string, string> _query = new();
     private TimeSpan? _timeout;
+    private MicroserviceCallMemoryQueue _queue;
 
     public HttpClientBuilder(IHttpClientFactory factory, ILogger logger)
     {
@@ -39,7 +41,13 @@ public sealed class HttpClientBuilder
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false
-        };
+        };        
+    }
+
+    public HttpClientBuilder WithMemoryQueue(MicroserviceCallMemoryQueue queue)
+    {
+        _queue = queue;
+        return this;
     }
 
     public HttpClientBuilder WithClient(string name)

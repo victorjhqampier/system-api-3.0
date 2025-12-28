@@ -11,7 +11,7 @@ public sealed class MicroserviceCallMemoryQueue : IDisposable
     private int _length; // contador aproximado
     private bool _disposed;
     private readonly int _capacity;
-    private int capacity = 200; // Tiene que ser estatico para no saturar la memoria
+    private int capacity = 500; // Tiene que ser estatico para no saturar la memoria
 
     public MicroserviceCallMemoryQueue(BoundedChannelFullMode fullMode = BoundedChannelFullMode.Wait)
     {
